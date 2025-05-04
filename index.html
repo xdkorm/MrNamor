@@ -96,6 +96,7 @@
     </a>
     <div class="title">Количество подписчиков:</div>
     <div id="count"></div>
+    <div id="subscriptions-info" style="font-size: 36px; margin-top: 20px;"></div>
   </div>
   <div class="footer">by xd_korm</div>
 
@@ -103,7 +104,9 @@
     const API_KEY = 'AIzaSyDOfXxy41NpEbjCFt1orCx_a3bUrmp6nxQ';
     const CHANNEL_ID = 'UCyQKFZ3wgfd9kfD8GL9gNTg';
 
-    let lastCount = null;
+    let lastCount = null; // Для хранения прошлого количества подписок
+    let newSubscriptions = parseInt(localStorage.getItem('newSubscriptions')) || 0; // Количество новых подписок из localStorage
+    let unsubscribedCount = parseInt(localStorage.getItem('unsubscribedCount')) || 0; // Количество отписавшихся из localStorage
     let initialized = false;
 
     function animateCount(newCount) {
@@ -150,15 +153,35 @@
       initialized = true;
     }
 
+    function updateSubscriptionsInfo() {
+      const infoContainer = document.getElementById('subscriptions-info');
+      infoContainer.textContent = `${newSubscriptions} 🡹 / ${unsubscribedCount} 🡻`;
+    }
+
     async function fetchSubscribers() {
       try {
         const res = await fetch(`https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${CHANNEL_ID}&key=${API_KEY}`);
         const data = await res.json();
-        const count = data.items[0].statistics.subscriberCount;
+        const count = parseInt(data.items[0].statistics.subscriberCount);
 
-        if (count !== lastCount) {
-          animateCount(count);
+        if (lastCount !== null) {
+          const change = count - lastCount; // Разница между текущим и прошлым значением
+
+          if (change > 0) {
+            newSubscriptions += change; // Увеличиваем количество подписавшихся
+          } else if (change < 0) {
+            unsubscribedCount += Math.abs(change); // Увеличиваем количество отписавшихся
+          }
+
+          // Сохраняем новые значения в localStorage
+          localStorage.setItem('newSubscriptions', newSubscriptions);
+          localStorage.setItem('unsubscribedCount', unsubscribedCount);
         }
+
+        animateCount(count); // Обновляем общее количество подписок
+        updateSubscriptionsInfo(); // Обновляем отображение подписок и отписок
+
+        lastCount = count; // Обновляем прошлое количество подписок
       } catch (error) {
         console.error('Error fetching subscriber count:', error);
       }
